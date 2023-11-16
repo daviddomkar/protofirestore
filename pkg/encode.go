@@ -7,7 +7,6 @@ import (
 	"github.com/DavidDomkar/protofirestore/internal/encoding/messageset"
 	"github.com/DavidDomkar/protofirestore/internal/flags"
 	"github.com/DavidDomkar/protofirestore/internal/order"
-	"github.com/DavidDomkar/protofirestore/internal/typeurldesc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -41,7 +40,7 @@ func (o MarshalOptions) marshal(m proto.Message) (map[string]interface{}, error)
 
 	enc := encoder{o}
 
-	if object, err := enc.marshalMessage(m.ProtoReflect(), ""); err != nil {
+	if object, err := enc.marshalMessage(m.ProtoReflect()); err != nil {
 		return nil, err
 	} else {
 		return object, proto.CheckInitialized(m)
@@ -52,24 +51,10 @@ type encoder struct {
 	opts MarshalOptions
 }
 
-// typeURLFieldRanger wraps a protoreflect.Message and modifies its Range method
-// to additionally iterate over a synthetic field for the type URL.
-type typeURLFieldRanger struct {
-	order.FieldRanger
-	typeURL string
-}
-
-func (m typeURLFieldRanger) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
-	if !f(typeurldesc.NewTypeURLDescriptor(), protoreflect.ValueOfString(m.typeURL)) {
-		return
-	}
-	m.FieldRanger.Range(f)
-}
-
 // marshalMessage marshals the fields in the given protoreflect.Message.
 // If the typeURL is non-empty, then a synthetic "@type" field is injected
 // containing the URL as the value.
-func (e encoder) marshalMessage(m protoreflect.Message, typeURL string) (map[string]interface{}, error) {
+func (e encoder) marshalMessage(m protoreflect.Message) (map[string]interface{}, error) {
 	if !flags.ProtoLegacy && messageset.IsMessageSet(m.Descriptor()) {
 		return nil, errors.New("no support for proto1 MessageSets")
 	}
@@ -80,10 +65,6 @@ func (e encoder) marshalMessage(m protoreflect.Message, typeURL string) (map[str
 	}
 
 	var fields order.FieldRanger = m
-
-	if typeURL != "" {
-		fields = typeURLFieldRanger{fields, typeURL}
-	}
 
 	object := make(map[string]interface{})
 
@@ -162,7 +143,7 @@ func (e encoder) marshalSingular(val protoreflect.Value, fd protoreflect.FieldDe
 		}
 
 	case protoreflect.MessageKind, protoreflect.GroupKind:
-		if object, err := e.marshalMessage(val.Message(), ""); err != nil {
+		if object, err := e.marshalMessage(val.Message()); err != nil {
 			return nil, err
 		} else {
 			return object, nil
