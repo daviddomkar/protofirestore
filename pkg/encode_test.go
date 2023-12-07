@@ -322,12 +322,241 @@ func TestMarshal(t *testing.T) {
 					},
 				},
 			},
+		}, {
+			desc:  "proto3 nested message not set",
+			input: &pb3.Nests{},
+			want:  map[string]interface{}{},
+		}, {
+			desc: "proto3 nested message set to empty",
+			input: &pb3.Nests{
+				SNested: &pb3.Nested{},
+			},
+			want: map[string]interface{}{},
+		}, {
+			desc: "proto3 nested message",
+			input: &pb3.Nests{
+				SNested: &pb3.Nested{
+					SString: "nested message",
+					SNested: &pb3.Nested{
+						SString: "another nested message",
+					},
+				},
+			},
+			want: map[string]interface{}{
+				"sNested": map[string]interface{}{
+					"sString": "nested message",
+					"sNested": map[string]interface{}{
+						"sString": "another nested message",
+					},
+				},
+			},
+		}, {
+			desc:  "oneof not set",
+			input: &pb3.Oneofs{},
+			want:  map[string]interface{}{},
+		}, {
+			desc: "oneof set to empty string",
+			input: &pb3.Oneofs{
+				Union: &pb3.Oneofs_OneofString{},
+			},
+			want: map[string]interface{}{},
+		}, {
+			desc: "oneof set to string",
+			input: &pb3.Oneofs{
+				Union: &pb3.Oneofs_OneofString{
+					OneofString: "hello",
+				},
+			},
+			want: map[string]interface{}{
+				"oneofString": "hello",
+			},
+		}, {
+			desc: "oneof set to enum",
+			input: &pb3.Oneofs{
+				Union: &pb3.Oneofs_OneofEnum{
+					OneofEnum: pb3.Enum_ZERO,
+				},
+			},
+			want: map[string]interface{}{
+				"oneofEnum": "ZERO",
+			},
+		}, {
+			desc: "oneof set to empty message",
+			input: &pb3.Oneofs{
+				Union: &pb3.Oneofs_OneofNested{
+					OneofNested: &pb3.Nested{},
+				},
+			},
+			want: map[string]interface{}{},
+		}, {
+			desc: "oneof set to message",
+			input: &pb3.Oneofs{
+				Union: &pb3.Oneofs_OneofNested{
+					OneofNested: &pb3.Nested{
+						SString: "nested message",
+					},
+				},
+			},
+			want: map[string]interface{}{
+				"oneofNested": map[string]interface{}{
+					"sString": "nested message",
+				},
+			},
+		}, {
+			desc:  "repeated fields not set",
+			input: &pb2.Repeats{},
+			want:  map[string]interface{}{},
+		}, {
+			desc: "repeated fields set to empty slices",
+			input: &pb2.Repeats{
+				RptBool:   []bool{},
+				RptInt32:  []int32{},
+				RptInt64:  []int64{},
+				RptUint32: []uint32{},
+				RptUint64: []uint64{},
+				RptFloat:  []float32{},
+				RptDouble: []float64{},
+				RptBytes:  [][]byte{},
+			},
+			want: map[string]interface{}{},
+		}, {
+			desc: "repeated fields set to some values",
+			input: &pb2.Repeats{
+				RptBool:   []bool{true, false, true, true},
+				RptInt32:  []int32{1, 6, 0, 0},
+				RptInt64:  []int64{-64, 47},
+				RptUint32: []uint32{0xff, 0xffff},
+				RptUint64: []uint64{0xdeadbeef},
+				RptFloat:  []float32{float32(math.NaN()), float32(math.Inf(1)), float32(math.Inf(-1)), 1.034},
+				RptDouble: []float64{math.NaN(), math.Inf(1), math.Inf(-1), 1.23e-308},
+				RptString: []string{"hello", "世界"},
+				RptBytes: [][]byte{
+					[]byte("hello"),
+					[]byte("\xe4\xb8\x96\xe7\x95\x8c"),
+				},
+			},
+			want: map[string]interface{}{
+				"rptBool":   []interface{}{true, false, true, true},
+				"rptInt32":  []interface{}{int32(1), int32(6), int32(0), int32(0)},
+				"rptInt64":  []interface{}{int64(-64), int64(47)},
+				"rptUint32": []interface{}{uint32(255), uint32(65535)},
+				"rptUint64": []interface{}{uint64(3735928559)},
+				"rptFloat":  []interface{}{float32(math.NaN()), float32(math.Inf(1)), float32(math.Inf(-1)), float32(1.034)},
+				"rptDouble": []interface{}{math.NaN(), math.Inf(1), math.Inf(-1), 1.23e-308},
+				"rptString": []interface{}{"hello", "世界"},
+				"rptBytes": []interface{}{
+					[]byte("hello"),
+					[]byte("\xe4\xb8\x96\xe7\x95\x8c"),
+				},
+			},
+		}, {
+			desc: "repeated enums",
+			input: &pb2.Enums{
+				RptEnum:       []pb2.Enum{pb2.Enum_ONE, 2, pb2.Enum_TEN, 42},
+				RptNestedEnum: []pb2.Enums_NestedEnum{2, 47, 10},
+			},
+			want: map[string]interface{}{
+				"rptEnum":       []interface{}{"ONE", "TWO", "TEN", int64(42)},
+				"rptNestedEnum": []interface{}{"DOS", int64(47), "DIEZ"},
+			},
+		}, {
+			desc: "repeated messages set to empty",
+			input: &pb2.Nests{
+				RptNested: []*pb2.Nested{},
+				Rptgroup:  []*pb2.Nests_RptGroup{},
+			},
+			want: map[string]interface{}{},
+		}, {
+			desc: "repeated messages",
+			input: &pb2.Nests{
+				RptNested: []*pb2.Nested{
+					{
+						OptString: proto.String("repeat nested one"),
+					},
+					{
+						OptString: proto.String("repeat nested two"),
+						OptNested: &pb2.Nested{
+							OptString: proto.String("inside repeat nested two"),
+						},
+					},
+					{},
+				},
+			},
+			want: map[string]interface{}{
+				"rptNested": []interface{}{
+					map[string]interface{}{
+						"optString": "repeat nested one",
+					},
+					map[string]interface{}{
+						"optString": "repeat nested two",
+						"optNested": map[string]interface{}{
+							"optString": "inside repeat nested two",
+						},
+					},
+					nil,
+				},
+			},
+		}, {
+			desc: "repeated messages contains nil value",
+			input: &pb2.Nests{
+				RptNested: []*pb2.Nested{nil, {}},
+			},
+			want: map[string]interface{}{
+				"rptNested": []interface{}{nil, nil},
+			},
+		}, {
+			desc: "repeated groups",
+			input: &pb2.Nests{
+				Rptgroup: []*pb2.Nests_RptGroup{
+					{
+						RptString: []string{"hello", "world"},
+					},
+					{},
+					nil,
+				},
+			},
+			want: map[string]interface{}{
+				"rptgroup": []interface{}{
+					map[string]interface{}{
+						"rptString": []interface{}{"hello", "world"},
+					},
+					nil,
+					nil,
+				},
+			},
+		}, {
+			desc:  "map fields not set",
+			input: &pb3.Maps{},
+			want:  map[string]interface{}{},
+		}, {
+			desc: "map fields set to empty",
+			input: &pb3.Maps{
+				Int32ToStr:   map[int32]string{},
+				BoolToUint32: map[bool]uint32{},
+				Uint64ToEnum: map[uint64]pb3.Enum{},
+				StrToNested:  map[string]*pb3.Nested{},
+				StrToOneofs:  map[string]*pb3.Oneofs{},
+			},
+			want: map[string]interface{}{},
+		}, {
+			desc: "map fields 1",
+			input: &pb3.Maps{
+				BoolToUint32: map[bool]uint32{
+					true:  42,
+					false: 101,
+				},
+			},
+			want: map[string]interface{}{
+				"boolToUint32": map[string]interface{}{
+					"false": uint32(101),
+					"true":  uint32(42),
+				},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-
 			got, err := pkg.Marshal(tt.input)
 
 			if err != nil && !tt.wantErr {
