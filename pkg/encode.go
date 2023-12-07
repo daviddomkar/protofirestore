@@ -205,7 +205,7 @@ func (e encoder) marshalMap(mmap protoreflect.Map, fd protoreflect.FieldDescript
 			err = e
 			return false
 		} else if value != nil {
-			name := fd.JSONName()
+			name := k.String()
 			object[name] = value
 		}
 		return true

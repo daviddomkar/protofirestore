@@ -552,6 +552,86 @@ func TestMarshal(t *testing.T) {
 					"true":  uint32(42),
 				},
 			},
+		}, {
+			desc: "map fields 2",
+			input: &pb3.Maps{
+				Int32ToStr: map[int32]string{
+					-101: "-101",
+					0xff: "0xff",
+					0:    "zero",
+				},
+			},
+			want: map[string]interface{}{
+				"int32ToStr": map[string]interface{}{
+					"-101": "-101",
+					"0":    "zero",
+					"255":  "0xff",
+				},
+			},
+		}, {
+			desc: "map fields 3",
+			input: &pb3.Maps{
+				Uint64ToEnum: map[uint64]pb3.Enum{
+					1:  pb3.Enum_ONE,
+					2:  pb3.Enum_TWO,
+					10: pb3.Enum_TEN,
+					47: 47,
+				},
+			},
+			want: map[string]interface{}{
+				"uint64ToEnum": map[string]interface{}{
+					"1":  "ONE",
+					"2":  "TWO",
+					"10": "TEN",
+					"47": int64(47),
+				},
+			},
+		}, {
+			desc: "map fields 4",
+			input: &pb3.Maps{
+				StrToNested: map[string]*pb3.Nested{
+					"nested": {
+						SString: "nested in a map",
+					},
+				},
+			},
+			want: map[string]interface{}{
+				"strToNested": map[string]interface{}{
+					"nested": map[string]interface{}{
+						"sString": "nested in a map",
+					},
+				},
+			},
+		}, {
+			desc: "map fields 5",
+			input: &pb3.Maps{
+				StrToOneofs: map[string]*pb3.Oneofs{
+					"string": {
+						Union: &pb3.Oneofs_OneofString{
+							OneofString: "hello",
+						},
+					},
+					"nested": {
+						Union: &pb3.Oneofs_OneofNested{
+							OneofNested: &pb3.Nested{
+								SString: "nested oneof in map field value",
+							},
+						},
+					},
+				},
+			},
+			want: map[string]interface{}{
+				"strToOneofs": map[string]interface{}{
+					"nested": map[string]interface{}{
+						"oneofNested": map[string]interface{}{
+							"sString": "nested oneof in map field value",
+						},
+					},
+					"string": map[string]interface{}{
+						"oneofString": "hello",
+					},
+				},
+			},
 		},
 	}
 
