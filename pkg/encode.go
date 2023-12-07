@@ -3,6 +3,7 @@ package pkg
 import (
 	"errors"
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/DavidDomkar/protofirestore/internal/encoding/messageset"
 	"github.com/DavidDomkar/protofirestore/internal/flags"
@@ -70,7 +71,8 @@ func (e encoder) marshalMessage(m protoreflect.Message) (map[string]interface{},
 
 	var err error
 	order.RangeFields(fields, order.IndexNameFieldOrder, func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-		if value, err := e.marshalValue(v, fd); err != nil {
+		if value, e := e.marshalValue(v, fd); e != nil {
+			err = e
 			return false
 		} else if value != nil {
 			name := fd.JSONName()
@@ -111,6 +113,11 @@ func (e encoder) marshalSingular(val protoreflect.Value, fd protoreflect.FieldDe
 		if val.String() == "" {
 			return nil, nil
 		}
+
+		if !utf8.ValidString(val.String()) {
+			return nil, fmt.Errorf("field %v contains invalid UTF-8", string(fd.FullName()))
+		}
+
 		return val.String(), nil
 
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
@@ -132,6 +139,9 @@ func (e encoder) marshalSingular(val protoreflect.Value, fd protoreflect.FieldDe
 		return val.Float(), nil
 
 	case protoreflect.BytesKind:
+		if len(val.Bytes()) == 0 {
+			return nil, nil
+		}
 		return val.Bytes(), nil
 
 	case protoreflect.EnumKind:
@@ -139,14 +149,21 @@ func (e encoder) marshalSingular(val protoreflect.Value, fd protoreflect.FieldDe
 			return nil, nil
 		} else {
 			desc := fd.Enum().Values().ByNumber(val.Enum())
+
+			if desc == nil {
+				return int64(val.Enum()), nil
+			}
+
 			return string(desc.Name()), nil
 		}
 
 	case protoreflect.MessageKind, protoreflect.GroupKind:
 		if object, err := e.marshalMessage(val.Message()); err != nil {
 			return nil, err
-		} else {
+		} else if len(object) != 0 {
 			return object, nil
+		} else {
+			return nil, nil
 		}
 
 	default:
@@ -184,7 +201,8 @@ func (e encoder) marshalMap(mmap protoreflect.Map, fd protoreflect.FieldDescript
 
 	var err error
 	order.RangeEntries(mmap, order.GenericKeyOrder, func(k protoreflect.MapKey, v protoreflect.Value) bool {
-		if value, err := e.marshalSingular(v, fd.MapValue()); err != nil {
+		if value, e := e.marshalSingular(v, fd.MapValue()); e != nil {
+			err = e
 			return false
 		} else if value != nil {
 			name := fd.JSONName()
