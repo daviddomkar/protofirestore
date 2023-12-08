@@ -632,6 +632,14 @@ func TestMarshal(t *testing.T) {
 					},
 				},
 			},
+		}, {
+			desc: "map field contains nil value",
+			input: &pb3.Maps{
+				StrToNested: map[string]*pb3.Nested{
+					"nil": nil,
+				},
+			},
+			want: map[string]interface{}{},
 		},
 	}
 

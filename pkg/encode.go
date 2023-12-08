@@ -94,7 +94,17 @@ func (e encoder) marshalValue(val protoreflect.Value, fd protoreflect.FieldDescr
 	case fd.IsList():
 		return e.marshalList(val.List(), fd)
 	case fd.IsMap():
-		return e.marshalMap(val.Map(), fd)
+		mmap, err := e.marshalMap(val.Map(), fd)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if len(mmap) == 0 {
+			return nil, nil
+		}
+
+		return mmap, nil
 	default:
 		return e.marshalSingular(val, fd)
 	}
@@ -186,6 +196,10 @@ func (e encoder) marshalList(list protoreflect.List, fd protoreflect.FieldDescri
 		} else if value != nil {
 			array[i] = value
 		}
+	}
+
+	if len(array) == 0 {
+		return nil, nil
 	}
 
 	return array, nil
