@@ -40,6 +40,10 @@ func (o MarshalOptions) marshal(m proto.Message) (map[string]interface{}, error)
 
 	enc := encoder{o}
 
+	if marshal := wellKnownTypeMarshaler(m.ProtoReflect().Descriptor().FullName()); marshal != nil {
+		return nil, errors.New("no support for well known types as top level objects in firestore documents")
+	}
+
 	if object, err := enc.marshalMessage(m.ProtoReflect()); err != nil {
 		return nil, err
 	} else {
@@ -57,11 +61,6 @@ type encoder struct {
 func (e encoder) marshalMessage(m protoreflect.Message) (map[string]interface{}, error) {
 	if messageset.IsMessageSet(m.Descriptor()) {
 		return nil, errors.New("no support for proto1 MessageSets")
-	}
-
-	// TODO: Think if this is needed, top level objects in firestore documents probably should not be well known types
-	if marshal := wellKnownTypeMarshaler(m.Descriptor().FullName()); marshal != nil {
-		return marshal(e, m)
 	}
 
 	var fields order.FieldRanger = m
@@ -167,13 +166,19 @@ func (e encoder) marshalSingular(val protoreflect.Value, fd protoreflect.FieldDe
 		}
 
 	case protoreflect.MessageKind, protoreflect.GroupKind:
-		if object, err := e.marshalMessage(val.Message()); err != nil {
+		m := val.Message()
+
+		if marshal := wellKnownTypeMarshaler(m.Descriptor().FullName()); marshal != nil {
+			return marshal(e, m)
+		}
+
+		if object, err := e.marshalMessage(m); err != nil {
 			return nil, err
 		} else if len(object) != 0 {
 			return object, nil
-		} else {
-			return nil, nil
 		}
+
+		return nil, nil
 
 	default:
 		panic(fmt.Sprintf("%v has unknown kind: %v", fd.FullName(), kind))
