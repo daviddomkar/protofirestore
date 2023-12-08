@@ -6,7 +6,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/DavidDomkar/protofirestore/internal/encoding/messageset"
-	"github.com/DavidDomkar/protofirestore/internal/flags"
 	"github.com/DavidDomkar/protofirestore/internal/order"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -56,7 +55,7 @@ type encoder struct {
 // If the typeURL is non-empty, then a synthetic "@type" field is injected
 // containing the URL as the value.
 func (e encoder) marshalMessage(m protoreflect.Message) (map[string]interface{}, error) {
-	if !flags.ProtoLegacy && messageset.IsMessageSet(m.Descriptor()) {
+	if messageset.IsMessageSet(m.Descriptor()) {
 		return nil, errors.New("no support for proto1 MessageSets")
 	}
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protopack"
 
 	pb2 "github.com/DavidDomkar/protofirestore/internal/testprotos/textpb2"
 	pb3 "github.com/DavidDomkar/protofirestore/internal/testprotos/textpb3"
@@ -640,6 +641,237 @@ func TestMarshal(t *testing.T) {
 				},
 			},
 			want: map[string]interface{}{},
+		}, {
+			desc:    "required fields not set",
+			input:   &pb2.Requireds{},
+			want:    map[string]interface{}{},
+			wantErr: true,
+		}, {
+			desc: "required fields partially set",
+			input: &pb2.Requireds{
+				ReqBool:     proto.Bool(false),
+				ReqSfixed64: proto.Int64(0),
+				ReqDouble:   proto.Float64(1.23),
+				ReqString:   proto.String("hello"),
+				ReqEnum:     pb2.Enum_ONE.Enum(),
+			},
+			want: map[string]interface{}{
+				"reqBool":     false,
+				"reqSfixed64": int64(0),
+				"reqDouble":   float64(1.23),
+				"reqString":   "hello",
+				"reqEnum":     "ONE",
+			},
+			wantErr: true,
+		}, {
+			desc: "required fields all set",
+			input: &pb2.Requireds{
+				ReqBool:     proto.Bool(false),
+				ReqSfixed64: proto.Int64(0),
+				ReqDouble:   proto.Float64(1.23),
+				ReqString:   proto.String("hello"),
+				ReqEnum:     pb2.Enum_ONE.Enum(),
+				ReqNested:   &pb2.Nested{},
+			},
+			want: map[string]interface{}{
+				"reqBool":     false,
+				"reqSfixed64": int64(0),
+				"reqDouble":   float64(1.23),
+				"reqString":   "hello",
+				"reqEnum":     "ONE",
+			},
+		}, {
+			desc: "indirect required field",
+			input: &pb2.IndirectRequired{
+				OptNested: &pb2.NestedWithRequired{},
+			},
+			want:    map[string]interface{}{},
+			wantErr: true,
+		}, {
+			desc: "indirect required field in empty repeated",
+			input: &pb2.IndirectRequired{
+				RptNested: []*pb2.NestedWithRequired{},
+			},
+			want: map[string]interface{}{},
+		}, {
+			desc: "indirect required field in repeated",
+			input: &pb2.IndirectRequired{
+				RptNested: []*pb2.NestedWithRequired{
+					{},
+				},
+			},
+			want: map[string]interface{}{
+				"rptNested": []interface{}{nil},
+			},
+			wantErr: true,
+		}, {
+			desc: "indirect required field in empty map",
+			input: &pb2.IndirectRequired{
+				StrToNested: map[string]*pb2.NestedWithRequired{},
+			},
+			want: map[string]interface{}{},
+		}, {
+			desc: "indirect required field in map",
+			input: &pb2.IndirectRequired{
+				StrToNested: map[string]*pb2.NestedWithRequired{
+					"fail": {},
+				},
+			},
+			want:    map[string]interface{}{},
+			wantErr: true,
+		}, {
+			desc: "indirect required field in oneof",
+			input: &pb2.IndirectRequired{
+				Union: &pb2.IndirectRequired_OneofNested{
+					OneofNested: &pb2.NestedWithRequired{},
+				},
+			},
+			want:    map[string]interface{}{},
+			wantErr: true,
+		}, {
+			desc: "unknown fields are ignored",
+			input: func() proto.Message {
+				m := &pb2.Scalars{
+					OptString: proto.String("no unknowns"),
+				}
+				m.ProtoReflect().SetUnknown(protopack.Message{
+					protopack.Tag{Number: 101, Type: protopack.BytesType}, protopack.String("hello world"),
+				}.Marshal())
+				return m
+			}(),
+			want: map[string]interface{}{
+				"optString": "no unknowns",
+			},
+		}, {
+			desc: "json_name",
+			input: &pb3.JSONNames{
+				SString: "json_name",
+			},
+			want: map[string]interface{}{
+				"foo_bar": "json_name",
+			},
+		}, {
+			desc: "extensions of non-repeated fields",
+			input: func() proto.Message {
+				m := &pb2.Extensions{
+					OptString: proto.String("non-extension field"),
+					OptBool:   proto.Bool(true),
+					OptInt32:  proto.Int32(42),
+				}
+				proto.SetExtension(m, pb2.E_OptExtBool, true)
+				proto.SetExtension(m, pb2.E_OptExtString, "extension field")
+				proto.SetExtension(m, pb2.E_OptExtEnum, pb2.Enum_TEN)
+				proto.SetExtension(m, pb2.E_OptExtNested, &pb2.Nested{
+					OptString: proto.String("nested in an extension"),
+					OptNested: &pb2.Nested{
+						OptString: proto.String("another nested in an extension"),
+					},
+				})
+				return m
+			}(),
+			want: map[string]interface{}{
+				"optString":          "non-extension field",
+				"optBool":            true,
+				"optInt32":           int32(42),
+				"[pb2.opt_ext_bool]": true,
+				"[pb2.opt_ext_enum]": "TEN",
+				"[pb2.opt_ext_nested]": map[string]interface{}{
+					"optString": "nested in an extension",
+					"optNested": map[string]interface{}{
+						"optString": "another nested in an extension",
+					},
+				},
+				"[pb2.opt_ext_string]": "extension field",
+			},
+		}, {
+			desc: "extensions of repeated fields",
+			input: func() proto.Message {
+				m := &pb2.Extensions{}
+				proto.SetExtension(m, pb2.E_RptExtEnum, []pb2.Enum{pb2.Enum_TEN, 101, pb2.Enum_ONE})
+				proto.SetExtension(m, pb2.E_RptExtFixed32, []uint32{42, 47})
+				proto.SetExtension(m, pb2.E_RptExtNested, []*pb2.Nested{
+					{OptString: proto.String("one")},
+					{OptString: proto.String("two")},
+					{OptString: proto.String("three")},
+				})
+				return m
+			}(),
+			want: map[string]interface{}{
+				"[pb2.rpt_ext_enum]":    []interface{}{"TEN", int64(101), "ONE"},
+				"[pb2.rpt_ext_fixed32]": []interface{}{uint32(42), uint32(47)},
+				"[pb2.rpt_ext_nested]": []interface{}{
+					map[string]interface{}{
+						"optString": "one",
+					},
+					map[string]interface{}{
+						"optString": "two",
+					},
+					map[string]interface{}{
+						"optString": "three",
+					},
+				},
+			},
+		}, {
+			desc: "extensions of non-repeated fields in another message",
+			input: func() proto.Message {
+				m := &pb2.Extensions{}
+				proto.SetExtension(m, pb2.E_ExtensionsContainer_OptExtBool, true)
+				proto.SetExtension(m, pb2.E_ExtensionsContainer_OptExtString, "extension field")
+				proto.SetExtension(m, pb2.E_ExtensionsContainer_OptExtEnum, pb2.Enum_TEN)
+				proto.SetExtension(m, pb2.E_ExtensionsContainer_OptExtNested, &pb2.Nested{
+					OptString: proto.String("nested in an extension"),
+					OptNested: &pb2.Nested{
+						OptString: proto.String("another nested in an extension"),
+					},
+				})
+				return m
+			}(),
+			want: map[string]interface{}{
+				"[pb2.ExtensionsContainer.opt_ext_bool]": true,
+				"[pb2.ExtensionsContainer.opt_ext_enum]": "TEN",
+				"[pb2.ExtensionsContainer.opt_ext_nested]": map[string]interface{}{
+					"optString": "nested in an extension",
+					"optNested": map[string]interface{}{
+						"optString": "another nested in an extension",
+					},
+				},
+				"[pb2.ExtensionsContainer.opt_ext_string]": "extension field",
+			},
+		}, {
+			desc: "extensions of repeated fields in another message",
+			input: func() proto.Message {
+				m := &pb2.Extensions{
+					OptString: proto.String("non-extension field"),
+					OptBool:   proto.Bool(true),
+					OptInt32:  proto.Int32(42),
+				}
+				proto.SetExtension(m, pb2.E_ExtensionsContainer_RptExtEnum, []pb2.Enum{pb2.Enum_TEN, 101, pb2.Enum_ONE})
+				proto.SetExtension(m, pb2.E_ExtensionsContainer_RptExtString, []string{"hello", "world"})
+				proto.SetExtension(m, pb2.E_ExtensionsContainer_RptExtNested, []*pb2.Nested{
+					{OptString: proto.String("one")},
+					{OptString: proto.String("two")},
+					{OptString: proto.String("three")},
+				})
+				return m
+			}(),
+			want: map[string]interface{}{
+				"optString":                              "non-extension field",
+				"optBool":                                true,
+				"optInt32":                               int32(42),
+				"[pb2.ExtensionsContainer.rpt_ext_enum]": []interface{}{"TEN", int64(101), "ONE"},
+				"[pb2.ExtensionsContainer.rpt_ext_nested]": []interface{}{
+					map[string]interface{}{
+						"optString": "one",
+					},
+					map[string]interface{}{
+						"optString": "two",
+					},
+					map[string]interface{}{
+						"optString": "three",
+					},
+				},
+				"[pb2.ExtensionsContainer.rpt_ext_string]": []interface{}{"hello", "world"},
+			},
 		},
 	}
 
