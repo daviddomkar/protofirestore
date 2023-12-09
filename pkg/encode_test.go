@@ -3,9 +3,12 @@ package pkg_test
 import (
 	"math"
 	"testing"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protopack"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb2 "github.com/DavidDomkar/protofirestore/internal/testprotos/textpb2"
 	pb3 "github.com/DavidDomkar/protofirestore/internal/testprotos/textpb3"
@@ -871,6 +874,70 @@ func TestMarshal(t *testing.T) {
 					},
 				},
 				"[pb2.ExtensionsContainer.rpt_ext_string]": []interface{}{"hello", "world"},
+			},
+		}, {
+			desc: "well known types as field values",
+			input: &pb2.KnownTypes{
+				/*OptBool:      &wrapperspb.BoolValue{Value: false},
+				OptInt32:     &wrapperspb.Int32Value{Value: 42},
+				OptInt64:     &wrapperspb.Int64Value{Value: 42},
+				OptUint32:    &wrapperspb.UInt32Value{Value: 42},
+				OptUint64:    &wrapperspb.UInt64Value{Value: 42},
+				OptFloat:     &wrapperspb.FloatValue{Value: 1.23},
+				OptDouble:    &wrapperspb.DoubleValue{Value: 3.1415},
+				OptString:    &wrapperspb.StringValue{Value: "hello"},
+				OptBytes:     &wrapperspb.BytesValue{Value: []byte("hello")},
+				OptDuration:  &durationpb.Duration{Seconds: 123},*/
+				OptTimestamp: &timestamppb.Timestamp{Seconds: 1553036601},
+				/*OptStruct: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"string": {Kind: &structpb.Value_StringValue{StringValue: "hello"}},
+					},
+				},
+				OptList: &structpb.ListValue{
+					Values: []*structpb.Value{
+						{Kind: &structpb.Value_NullValue{}},
+						{Kind: &structpb.Value_StringValue{}},
+						{Kind: &structpb.Value_StructValue{}},
+						{Kind: &structpb.Value_ListValue{}},
+					},
+				},
+				OptValue: &structpb.Value{
+					Kind: &structpb.Value_StringValue{StringValue: "world"},
+				},
+				*/
+				OptEmpty: &emptypb.Empty{},
+				/*
+					OptAny: &anypb.Any{
+						TypeUrl: "google.protobuf.Empty",
+					},
+					OptFieldmask: &fieldmaskpb.FieldMask{
+						Paths: []string{"foo_bar", "bar_foo"},
+					},*/
+			},
+			want: map[string]interface{}{
+				/*"optBool":      false,
+				"optInt32":     int32(42),
+				"optInt64":     int64(42),
+				"optUint32":    uint32(42),
+				"optUint64":    uint64(42),
+				"optFloat":     float32(1.23),
+				"optDouble":    float64(3.1415),
+				"optString":    "hello",
+				"optBytes":     []byte("hello"),
+				"optDuration":  "123s",*/
+				"optTimestamp": time.Unix(1553036601, 0).UTC(),
+				/*"optStruct": map[string]interface{}{
+					"string": "hello",
+				},
+				"optList": []interface{}{
+					nil,
+					nil,
+					nil,
+					nil,
+				},
+				"optValue":     "world",
+				"optFieldmask": "fooBar,barFoo",*/
 			},
 		},
 	}
