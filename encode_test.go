@@ -1,4 +1,4 @@
-package pkg_test
+package protofirestore_test
 
 import (
 	"math"
@@ -10,9 +10,9 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	pkg "github.com/DavidDomkar/protofirestore"
 	pb2 "github.com/DavidDomkar/protofirestore/internal/testprotos/textpb2"
 	pb3 "github.com/DavidDomkar/protofirestore/internal/testprotos/textpb3"
-	pkg "github.com/DavidDomkar/protofirestore/pkg"
 	"github.com/go-test/deep"
 )
 

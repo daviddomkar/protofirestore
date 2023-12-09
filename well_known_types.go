@@ -1,4 +1,4 @@
-package pkg
+package protofirestore
 
 import (
 	"errors"
