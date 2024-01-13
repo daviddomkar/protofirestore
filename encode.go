@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"github.com/DavidDomkar/protofirestore/internal/encoding/messageset"
-	"github.com/DavidDomkar/protofirestore/internal/order"
+	"github.com/daviddomkar/protofirestore/internal/encoding/messageset"
+	"github.com/daviddomkar/protofirestore/internal/order"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"

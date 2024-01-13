@@ -2,7 +2,7 @@
 syntax = "proto3";
 
 package pb3;
-option go_package = "github.com/DavidDomkar/protofirestore/internal/testprotos/textpb3";
+option go_package = "github.com/daviddomkar/protofirestore/internal/testprotos/textpb3";
 
 // Scalars contains scalar field types.
 message Scalars {

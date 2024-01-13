@@ -1,4 +1,4 @@
-module github.com/DavidDomkar/protofirestore
+module github.com/daviddomkar/protofirestore
 
 go 1.21.4
 

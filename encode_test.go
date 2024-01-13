@@ -10,9 +10,9 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	pkg "github.com/DavidDomkar/protofirestore"
-	pb2 "github.com/DavidDomkar/protofirestore/internal/testprotos/textpb2"
-	pb3 "github.com/DavidDomkar/protofirestore/internal/testprotos/textpb3"
+	pkg "github.com/daviddomkar/protofirestore"
+	pb2 "github.com/daviddomkar/protofirestore/internal/testprotos/textpb2"
+	pb3 "github.com/daviddomkar/protofirestore/internal/testprotos/textpb3"
 	"github.com/go-test/deep"
 )
 

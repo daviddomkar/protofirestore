@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/DavidDomkar/protofirestore/internal/genid"
+	"github.com/daviddomkar/protofirestore/internal/genid"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
