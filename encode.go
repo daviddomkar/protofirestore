@@ -17,22 +17,6 @@ func Marshal(m proto.Message) (map[string]interface{}, error) {
 }
 
 type MarshalOptions struct {
-	// EmitUnpopulated specifies whether to emit unpopulated fields. It does not
-	// emit unpopulated oneof fields or unpopulated extension fields.
-	// The JSON value emitted for unpopulated fields are as follows:
-	//  ╔═══════╤════════════════════════════╗
-	//  ║ JSON  │ Protobuf field             ║
-	//  ╠═══════╪════════════════════════════╣
-	//  ║ false │ proto3 boolean fields      ║
-	//  ║ 0     │ proto3 numeric fields      ║
-	//  ║ ""    │ proto3 string/bytes fields ║
-	//  ║ null  │ proto2 scalar fields       ║
-	//  ║ null  │ message fields             ║
-	//  ║ []    │ list fields                ║
-	//  ║ {}    │ map fields                 ║
-	//  ╚═══════╧════════════════════════════╝
-	EmitUnpopulated bool
-
 	// EmitDefaultValues specifies whether to emit default-valued primitive fields,
 	// empty lists, and empty maps. The fields affected are as follows:
 	//  ╔═══════╤════════════════════════════════════════╗
@@ -41,8 +25,6 @@ type MarshalOptions struct {
 	//  ║ false │ non-optional scalar boolean fields     ║
 	//  ║ 0     │ non-optional scalar numeric fields     ║
 	//  ║ ""    │ non-optional scalar string/byte fields ║
-	//  ║ []    │ empty repeated fields                  ║
-	//  ║ {}    │ empty map fields                       ║
 	//  ╚═══════╧════════════════════════════════════════╝
 	//
 	// Behaves similarly to EmitUnpopulated, but does not emit "null"-value fields,
@@ -94,8 +76,6 @@ type encoder struct {
 // method to additionally iterate over unpopulated fields.
 type unpopulatedFieldRanger struct {
 	protoreflect.Message
-
-	skipNull bool
 }
 
 func (m unpopulatedFieldRanger) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
@@ -109,12 +89,11 @@ func (m unpopulatedFieldRanger) Range(f func(protoreflect.FieldDescriptor, proto
 		v := m.Get(fd)
 		isProto2Scalar := fd.Syntax() == protoreflect.Proto2 && fd.Default().IsValid()
 		isSingularMessage := fd.Cardinality() != protoreflect.Repeated && fd.Message() != nil
-		if isProto2Scalar || isSingularMessage {
-			if m.skipNull {
-				continue
-			}
-			v = protoreflect.Value{} // use invalid value to emit null
+
+		if fd.IsList() && v.List().Len() == 0 || fd.IsMap() && v.Map().Len() == 0 || isProto2Scalar || isSingularMessage {
+			continue // ignore empty lists, maps, proto2 scalars, and singular messages
 		}
+
 		if !f(fd, v) {
 			return
 		}
@@ -132,10 +111,8 @@ func (e encoder) marshalMessage(m protoreflect.Message) (map[string]interface{},
 
 	var fields order.FieldRanger = m
 	switch {
-	case e.opts.EmitUnpopulated:
-		fields = unpopulatedFieldRanger{Message: m, skipNull: false}
 	case e.opts.EmitDefaultValues:
-		fields = unpopulatedFieldRanger{Message: m, skipNull: true}
+		fields = unpopulatedFieldRanger{Message: m}
 	}
 
 	object := make(map[string]interface{})
