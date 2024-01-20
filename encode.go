@@ -17,22 +17,29 @@ func Marshal(m proto.Message) (map[string]interface{}, error) {
 }
 
 type MarshalOptions struct {
-	// EmitDefaultValues specifies whether to emit default-valued primitive fields,
-	// empty lists, and empty maps. The fields affected are as follows:
+	// EmitFirestoreSensibleDefaults specifies whether to emit default values
+	// for fields which would otherwise be omitted. This is useful for ensuring that
+	// the firestore database queries can be used to filter on the fields because
+	// firestore does not support checking for the absence of a field.
+	// The fields affected are as follows:
 	//  ╔═══════╤════════════════════════════════════════╗
 	//  ║ JSON  │ Protobuf field                         ║
 	//  ╠═══════╪════════════════════════════════════════╣
 	//  ║ false │ non-optional scalar boolean fields     ║
 	//  ║ 0     │ non-optional scalar numeric fields     ║
 	//  ║ ""    │ non-optional scalar string/byte fields ║
+	//  ║ {}    │ non-optional messages within one ofs   ║
 	//  ╚═══════╧════════════════════════════════════════╝
 	//
-	// Behaves similarly to EmitUnpopulated, but does not emit "null"-value fields,
-	// i.e. presence-sensing fields that are omitted will remain omitted to preserve
-	// presence-sensing.
-	// EmitUnpopulated takes precedence over EmitDefaultValues since the former generates
-	// a strict superset of the latter.
-	EmitDefaultValues bool
+	// The reason for the non-optional restriction is that optional fields
+	// are not guaranteed to be present in the proto message, and therefore
+	// the firestore query would not be able to filter on the field.
+	//
+	// The reason for the oneof non-optional messages being empty map in json
+	// is that when deserializing from firestore, the oneof field needs to know
+	// which field to populate, and if the field is not present in the json,
+	// then it will just be nil.
+	EmitFirestoreSensibleDefaults bool
 
 	// Resolver is used for looking up types when expanding google.protobuf.Any
 	// messages. If nil, this defaults to using protoregistry.GlobalTypes.
@@ -72,13 +79,13 @@ type encoder struct {
 	opts MarshalOptions
 }
 
-// unpopulatedFieldRanger wraps a protoreflect.Message and modifies its Range
-// method to additionally iterate over unpopulated fields.
-type unpopulatedFieldRanger struct {
+// firestoreFieldRanger wraps a protoreflect.Message and modifies its Range
+// method to additionally iterate over firestore sensible defaults.
+type firestoreFieldRanger struct {
 	protoreflect.Message
 }
 
-func (m unpopulatedFieldRanger) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (m firestoreFieldRanger) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	fds := m.Descriptor().Fields()
 	for i := 0; i < fds.Len(); i++ {
 		fd := fds.Get(i)
@@ -111,8 +118,8 @@ func (e encoder) marshalMessage(m protoreflect.Message) (map[string]interface{},
 
 	var fields order.FieldRanger = m
 	switch {
-	case e.opts.EmitDefaultValues:
-		fields = unpopulatedFieldRanger{Message: m}
+	case e.opts.EmitFirestoreSensibleDefaults:
+		fields = firestoreFieldRanger{Message: m}
 	}
 
 	object := make(map[string]interface{})
@@ -224,7 +231,7 @@ func (e encoder) marshalSingular(val protoreflect.Value, fd protoreflect.FieldDe
 
 		if object, err := e.marshalMessage(m); err != nil {
 			return nil, err
-		} else if len(object) != 0 {
+		} else if len(object) != 0 || (e.opts.EmitFirestoreSensibleDefaults && fd.ContainingOneof() != nil) {
 			return object, nil
 		}
 

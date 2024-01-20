@@ -18,10 +18,11 @@ import (
 
 func TestMarshal(t *testing.T) {
 	tests := []struct {
-		desc    string
-		input   proto.Message
-		want    map[string]interface{}
-		wantErr bool
+		desc     string
+		input    proto.Message
+		defaults bool
+		want     map[string]interface{}
+		wantErr  bool
 	}{
 		{
 			desc:  "proto2 optional scalars not set",
@@ -392,6 +393,17 @@ func TestMarshal(t *testing.T) {
 				},
 			},
 			want: map[string]interface{}{},
+		}, {
+			desc: "oneof set to empty message with firestore sensible defaults",
+			input: &pb3.Oneofs{
+				Union: &pb3.Oneofs_OneofNested{
+					OneofNested: &pb3.Nested{},
+				},
+			},
+			defaults: true,
+			want: map[string]interface{}{
+				"oneofNested": map[string]interface{}{},
+			},
 		}, {
 			desc: "oneof set to message",
 			input: &pb3.Oneofs{
@@ -944,7 +956,9 @@ func TestMarshal(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			got, err := pkg.Marshal(tt.input)
+			got, err := pkg.MarshalOptions{
+				EmitFirestoreSensibleDefaults: tt.defaults,
+			}.Marshal(tt.input)
 
 			if err != nil && !tt.wantErr {
 				t.Errorf("Marshal() returned error: %v\n", err)
