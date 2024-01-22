@@ -1,6 +1,6 @@
 module github.com/daviddomkar/protofirestore
 
-go 1.21.4
+go 1.21.6
 
 require google.golang.org/protobuf v1.31.0
 
